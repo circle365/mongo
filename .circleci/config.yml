@@ -17,7 +17,8 @@ orbs:
 # our defined job, and its steps
 jobs:
   setup:
-    executor: continuation/default
+    machine: true
+    resource_class: name/spaces  # Specify the self-hosted runner's resource class here
     steps:
       - checkout # checkout code
       - maybe_build_certs
