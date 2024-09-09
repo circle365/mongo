@@ -3,53 +3,31 @@ version: 2.1
 references:
   - &CERT_KEY certs-cache-{{ checksum "certs_cache_key" }}-v3
 
-# Enable CircleCI's dynamic configuration feature
+# this allows you to use CircleCI's dynamic configuration feature
 setup: true
 
 filters: &all_tags
   tags:
     only: /^\d+\.\d+\.\d+([a-z0-9\-\+])*/
 
-# The continuation orb is required for dynamic configuration
+# the continuation orb is required in order to use dynamic configuration
 orbs:
   continuation: circleci/continuation@0.2.0
 
-# Define the jobs
+# our defined job, and its steps
 jobs:
   setup:
     machine: true
-    resource_class: name/spaces  # Use the self-hosted runner's resource class
+    resource_class: name/spaces  # Specify the self-hosted runner's resource class here
     steps:
-      - checkout  # Checkout code
+      - checkout # checkout code
       - maybe_build_certs
-      - run:  # Generate the config
+      - run: # run a command
           name: Generate config
           command: |
-            tools/circle-generate-config.sh /var/lib/circleci/workdir/generated_config.yml
-      - persist_to_workspace:  # Persist the generated config
-          root: /var/lib/circleci/workdir
-          paths:
-            - generated_config.yml
-
-  build:  # Add another job to continue after setup
-    machine: true
-    resource_class: name/spaces  # Use the self-hosted runner's resource class
-    steps:
-      - attach_workspace:  # Attach the workspace from the setup job
-          at: /workspace
-      - run:  # Verify that the generated config exists
-          name: Verify generated_config.yml exists
-          command: |
-            if [ -f /workspace/generated_config.yml ]; then
-              echo "Config exists!"
-            else
-              echo "Config is missing!"
-              exit 1
-            fi
-      - run:
-          name: Proceed with build
-          command: |
-            # Add your build commands here
+            tools/circle-generate-config.sh generated_config.yml
+      - continuation/continue:
+          configuration_path: generated_config.yml # use newly generated config to continue
 
 commands:
   maybe_build_certs:
@@ -61,6 +39,8 @@ commands:
           name: Restore certificates
           key: *CERT_KEY
       - run:
+          # We do not rebuild certificates to ensure that the cached version
+          # is the master-copy
           name: Build certificates if not cached
           command: test -f tools/ssl/mongooseim/key.pem || make certs
       - run:
@@ -77,11 +57,9 @@ commands:
             - ~/project/tools/ssl/ca-clients
             - ~/project/tools/ssl/mongooseim
 
-# Define the workflow
+# our single workflow, that triggers the setup job defined above
 workflows:
-  setup_workflow:
+  setup:
     jobs:
-      - setup
-      - build:  # Trigger build job after setup
-          requires:
-            - setup
+      - setup:
+          filters: *all_tags
