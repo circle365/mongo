@@ -25,7 +25,7 @@ jobs:
       - run:  # Generate the config file
           name: Generate config
           command: |
-            tools/circle-generate-config.sh /var/lib/circleci/workdir/generated_config.yml
+            tools/circle-generate-config.sh generated_config.yml
       - persist_to_workspace:  # Persist the generated config to the workspace
           root: /var/lib/circleci/workdir
           paths:
