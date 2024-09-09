@@ -65,4 +65,4 @@ workflows:
   setup_workflow:
     jobs:
       - setup
-          filters: *all_tags
+          
